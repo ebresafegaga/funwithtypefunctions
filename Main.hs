@@ -4,6 +4,7 @@
 module Main where
 
 import Data.Kind (Type)
+import Data.Map (Map)
 
 f :: [Int] -> [Bool] -> Int 
 f is bs = length is + length bs
@@ -42,6 +43,26 @@ class Cons a b where
 instance Cons Integer Double where 
     type ResTy Integer Double = Double 
     cons x ys = fromIntegral x : ys
+
+class Graph g where 
+    type Vertex g :: *
+    data Edge g 
+    src, tgt :: Edge g -> Vertex g
+    outEdges :: g -> Vertex g -> [Edge g]
+
+newtype G1 = G1 [Edge G1]
+
+instance Graph G1 where 
+    type Vertex G1 = Int 
+    data Edge G1 = MkEdge (Vertex G1) (Vertex G1) 
+
+
+newtype G2 = G2 (Map (Vertex G2) [Vertex G2])
+
+instance Graph G2 where 
+    type Vertex G2 = String 
+    data Edge G2 = MkEdge2 Int (Vertex G2) (Vertex G2)
+
 
 
 main :: IO ()
