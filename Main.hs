@@ -170,5 +170,65 @@ instance Key Int where
     empty = MI DI.empty
     lookup k (MI m) = DI.lookup k m
 
+data Stop = Done 
+newtype In a b = In (a -> IO b) 
+data Out a b = Out a (IO b)
+
+addServer :: In Int (In Int (Out Int Stop))
+addServer = 
+    In $ \x -> return $ In $ \y -> do
+                    putStrLn "Thinking" 
+                    return $ Out (x + y) (return Done) 
+
+class Session a where 
+    type Dual a :: * 
+    run :: a -> Dual a -> IO ()
+
+instance (Session b) => Session (In a b) where 
+    type Dual (In a b) = Out a (Dual b)
+    run (In f) (Out a d) = f a >>= \b -> d >>= \c -> run b c
+
+instance (Session b) => Session (Out a b) where 
+    type Dual (Out a b) = In a (Dual b) 
+    run (Out a d) (In f) = f a >>= \b -> d >>= \c -> run c b
+
+instance Session Stop where 
+    type Dual Stop = Stop 
+    run Done Done = return ()  
+
+
+addClient :: Out Int (Out Int (In Int Stop))
+addClient = Out 3 $ return $ Out 4 $ do 
+                            putStrLn "Waiting"
+                            return $ In $ \z -> print z >> return Done
+
+r :: IO ()
+r = run addServer addClient
+
+negServer :: In Int (Out Int Stop)
+negServer = In $ \x -> do 
+                    putStrLn "Thinking"
+                    return $ Out (-x) (return Done)
+
+instance (Session a, Session b) => Session (Either a b) where 
+    type Dual (Either a b) = (Dual a, Dual b)
+    run (Left y) (x,_) = run y x
+    run (Right y) (_,x) = run y x
+
+instance (Session a, Session b) => Session (a, b) where 
+    type Dual (a, b) = Either (Dual a) (Dual b)
+    run (x,_) (Left y) = run x y
+    run (_,x) (Right y) = run x y
+
+
+server :: (In Int (Out Int Stop), 
+            In Int (In Int (Out Int Stop)))
+server = (negServer, addServer)
+
+
+client :: Either (Out Int (In Int Stop))
+                 (Out Int (Out Int (In Int Stop)))
+client = Right addClient
+
 main :: IO ()
-main = putStrLn "Hello, Haskell!"
+main = r
