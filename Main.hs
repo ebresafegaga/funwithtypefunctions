@@ -88,5 +88,39 @@ instance (Monad m, Mutation' m, MonadTrans t)
     readRef' = lift . readRef'
     writeRef' = (lift .) . writeRef'
 
+class Memo a where
+    data Table a :: * -> *
+    toTable :: (a -> w) -> Table a w
+    fromTable :: Table a w -> (a -> w)
+
+instance Memo Bool where 
+    data Table Bool w = TBool w w
+    toTable f = TBool (f True) (f False)
+    fromTable (TBool x y) b = if b then x else y 
+
+
+factorial 0 = 1 
+factorial 1 = 1 
+factorial n = n * factorial (n-1)
+
+
+fibonacci 0 = 1 
+fibonacci 1 = 1 
+fibonacci n = fibonacci (n-1) + fibonacci (n-2)
+
+f' :: Bool -> Int 
+f' True = factorial 100
+f' False = fibonacci 100
+
+g = fromTable (toTable f')
+
+
+instance (Memo a, Memo b) => Memo (Either a b) where 
+    data Table (Either a b) w = TSum (Table a w) (Table b w)
+    toTable f = TSum (toTable (f . Left)) (toTable (f . Right))
+    fromTable (TSum t _) (Left v) = fromTable t v
+    fromTable (TSum _ t) (Right v) = fromTable t v
+
+v = Left
 main :: IO ()
 main = putStrLn "Hello, Haskell!"
