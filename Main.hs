@@ -35,5 +35,14 @@ instance (Num a) => Add a a where
     type SumTy a a = a
     add x y = x + y 
 
+class Cons a b where 
+    type ResTy a b :: * 
+    cons :: a -> [b] -> [ResTy a b]
+
+instance Cons Integer Double where 
+    type ResTy Integer Double = Double 
+    cons x ys = fromIntegral x : ys
+
+
 main :: IO ()
 main = putStrLn "Hello, Haskell!"
