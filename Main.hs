@@ -5,7 +5,9 @@
 module Main where
 
 import Data.Kind (Type)
-import Data.Map (Map)
+import Prelude hiding (lookup)
+import qualified Data.Map as M 
+import qualified Data.IntMap as DI
 
 f :: [Int] -> [Bool] -> Int 
 f is bs = length is + length bs
@@ -58,7 +60,7 @@ instance Graph G1 where
     data Edge G1 = MkEdge (Vertex G1) (Vertex G1) 
 
 
-newtype G2 = G2 (Map (Vertex G2) [Vertex G2])
+newtype G2 = G2 (M.Map (Vertex G2) [Vertex G2])
 
 instance Graph G2 where 
     type Vertex G2 = String 
@@ -133,6 +135,40 @@ instance (Memo a) => Memo [a] where
     fromTable (TList _ t) (x:xs) = fromTable (fromTable t x) xs
 
 v = Left
+
+-- type Map key value = Table key (Maybe value)
+
+class Key k where 
+    data Map k :: * -> *
+    empty :: Map k v
+    lookup :: k -> Map k v -> Maybe v 
+
+instance Key Bool where 
+    data Map Bool elt = MB (Maybe elt) (Maybe elt)
+    empty = MB Nothing Nothing 
+    lookup False (MB mf _) = mf
+    lookup True (MB _ mt) = mt 
+
+a :: Map Bool Int 
+a = empty
+
+instance (Key a, Key b) => Key (Either a b) where 
+    data Map (Either a b) elt = MS (Map a elt) (Map b elt)
+    empty = MS empty empty 
+    lookup (Left k) (MS m _) = lookup k m
+    lookup (Right k) (MS _ m) = lookup k m
+
+instance (Key a, Key b) => Key (a, b) where 
+    data Map (a, b) elt = MP (Map a (Map b elt))
+    empty = MP empty
+    lookup (a, b) (MP m) = do 
+            m' <- lookup a m 
+            lookup b m'
+
+instance Key Int where 
+    newtype Map Int elt = MI (DI.IntMap elt)
+    empty = MI DI.empty
+    lookup k (MI m) = DI.lookup k m
 
 main :: IO ()
 main = putStrLn "Hello, Haskell!"
