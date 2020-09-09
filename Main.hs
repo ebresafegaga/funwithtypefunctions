@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE FunctionalDependencies #-}
@@ -63,7 +64,29 @@ instance Graph G2 where
     type Vertex G2 = String 
     data Edge G2 = MkEdge2 Int (Vertex G2) (Vertex G2)
 
+neigbours :: Graph g => g -> Vertex g -> [Vertex g]
+neigbours g v = map tgt (outEdges g v)
 
+newtype Age = MkAge Int 
+
+instance Add Age Int where 
+    type SumTy Age Int = Age 
+    add (MkAge a) n = MkAge (a+n)
+
+
+instance (Add Integer a) => Add Integer [a] where 
+    type SumTy Integer [a] = [SumTy Integer a]
+    add x y = map (add x) y
+
+class MonadTrans t where 
+    lift :: Monad m => m a -> t m a 
+
+instance (Monad m, Mutation' m, MonadTrans t) 
+    => Mutation' (t m) where 
+    type Ref (t m) = Ref m 
+    newRef' = lift . newRef'
+    readRef' = lift . readRef'
+    writeRef' = (lift .) . writeRef'
 
 main :: IO ()
 main = putStrLn "Hello, Haskell!"
